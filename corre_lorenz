@@ -1,0 +1,103 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Aug 27 14:49:18 2018
+
+@author: keir
+"""
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+
+#The following computes the correlation dimension of the Lorenz attractor
+#(i.e. uses the scaling laws to find the dimensionality of the system's
+#attractor)
+
+
+#Generates points for the Lorenz attractor
+
+def lorenz(dt,x0,y0,z0,r,t):
+    v_0 = (x0,y0,z0)
+    v_list = [v_0]
+    n = int(t/dt)
+    for i in range(1,n+1):
+        xi = v_list[i-1][0]
+        yi = v_list[i-1][1]
+        zi = v_list[i-1][2]
+        x = xi+ dt*(10*(yi-xi))
+        y = yi + dt*(r*xi- xi*zi - yi)
+        z = zi + dt*(xi*yi - (8.0/3)*zi)
+        v = (x,y,z)
+        v_list.append(v)
+    return v_list
+  
+    
+    #Computes correlation dimension of Lorenz attractor (r is r, s is sample number)
+def lorenz_corr_dimension(r,s):
+    v_lis = lorenz(0.01,0.01,0.01,0.01,r,50)
+    ind = []
+    n_list =[]
+#Randomly selects points far ahead in the list since they are near the attractor
+
+    for i in range(0,s):
+        ij = np.random.randint(2500,4999)
+        ind.append(ij)
+    test_points =[]
+    for i in ind:
+        v = v_lis[i]
+        test_points.append(v)
+
+
+    ind =[]
+#Generates values of epsilon
+    eps=[]
+    e= 0
+    for j in range(1,101):
+#Done backwards, since any points in one epsilon ball
+#will neccessarily be contained within a smaller nested
+#epsilon ball
+        e = 1.0 - j*0.01
+        eps.append(e)
+#Computes points near a randomly chosen point (i.e test_points)
+    onedown_list =[]
+    for k in range(0,len(eps)):
+        print(str(k) +"%")
+#ne_sum is the total number of points around each test_point, n averages that value with the number
+#of test points
+        ne_sum= 0
+        n = 0
+        #List of vs in a larger epsilon ball
+        oneup_list =[]
+#First step generates the list correspoinding to the largest epsilon ball
+        if k==0:
+            for vi in test_points:
+                for vj in v_lis:
+                    norm =  ((vj[0]-vi[0])**2 + (vj[1]-vi[1])**2 + (vj[1]-vi[1])**2  )
+                    if (0 < norm <= (eps[k]**2)):
+                        oneup_list.append(vj)
+                        ne_sum += 1
+            n = ne_sum / len(test_points)
+            n_list.append(n)
+#Every additional step uses the previous list to generate a smaller subset
+        else:
+            for vi in test_points:
+                for vj in onedown_list:
+                    norm =  ((vj[0]-vi[0])**2 + (vj[1]-vi[1])**2 + (vj[1]-vi[1])**2  )
+                    if (0 < norm <= (eps[k]**2)):
+                        oneup_list.append(vj)
+                        ne_sum += 1
+            n = ne_sum / len(test_points)
+            n_list.append(n)
+        onedown_list= oneup_list
+    return eps,n_list
+            
+    
+out1,out2 = lorenz_corr_dimension(28,10)
+
+lp = np.log(out1)[0:17]
+
+Ce = np.log(out2)[0:17]
+
+plt.plot(lp,Ce)
+
+slope, intercept, r_value, p_value, std_err = stats.linregress(lp,Ce)
